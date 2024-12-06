@@ -99,41 +99,40 @@ def download_daily_klines(trading_type, symbols, num_symbols, intervals, dates, 
                 if current_date >= start_date and current_date <= end_date:
                     path = get_path(trading_type, "klines", "daily", symbol, interval)
                     file_name = "{}-{}-{}.zip".format(symbol.upper(), interval, date)
-                    download_file(path, file_name, date_range, folder)
+                    download_success = download_file(path, file_name, date_range, folder)
+                    if download_success:
+                        if checksum == 1:
+                            checksum_path = get_path(trading_type, "klines", "daily", symbol, interval)
+                            checksum_file_name = "{}-{}-{}.zip.CHECKSUM".format(symbol.upper(), interval, date)
+                            download_file(checksum_path, checksum_file_name, date_range, folder)
 
-                    if checksum == 1:
-                        checksum_path = get_path(trading_type, "klines", "daily", symbol, interval)
-                        checksum_file_name = "{}-{}-{}.zip.CHECKSUM".format(symbol.upper(), interval, date)
-                        download_file(checksum_path, checksum_file_name, date_range, folder)
-
-                        save_checksum_path = get_destination_dir(os.path.join(checksum_path, checksum_file_name),
-                                                                 folder)
-                        save_zip_path = get_destination_dir(os.path.join(path, file_name), folder)
-                        is_valid, expected_checksum, actual_checksum = verify_checksum(save_zip_path,
-                                                                                       save_checksum_path)
-                        if not is_valid:
-                            print(f"Checksum mismatch! Expected: {expected_checksum}, Actual: {actual_checksum}")
-                        else:
-                            print("Checksum is valid. Proceeding with file parsing...")
-                            # 调用函数解析 ZIP 并发送到 Kafka
-                            send_success=parse_zip_and_send_to_kafka(save_zip_path, kafka_topic, kafka_servers)
-                            if send_success:
-                                """
-                                    删除文件
-                                    :param zip_path: ZIP 文件路径
+                            save_checksum_path = get_destination_dir(os.path.join(checksum_path, checksum_file_name),
+                                                                     folder)
+                            save_zip_path = get_destination_dir(os.path.join(path, file_name), folder)
+                            is_valid, expected_checksum, actual_checksum = verify_checksum(save_zip_path,
+                                                                                           save_checksum_path)
+                            if not is_valid:
+                                print(f"Checksum mismatch! Expected: {expected_checksum}, Actual: {actual_checksum}")
+                            else:
+                                print("Checksum is valid. Proceeding with file parsing...")
+                                # 调用函数解析 ZIP 并发送到 Kafka
+                                send_success = parse_zip_and_send_to_kafka(save_zip_path, kafka_topic, kafka_servers)
+                                if send_success:
                                     """
-                                try:
-                                    os.remove(save_zip_path)
-                                    print(f"Deleted zip file: {save_zip_path}")
-                                except Exception as e:
-                                    print(f"Failed to delete zip file {save_zip_path}: {e}")
+                                        删除文件
+                                        :param zip_path: ZIP 文件路径
+                                        """
+                                    try:
+                                        os.remove(save_zip_path)
+                                        print(f"Deleted zip file: {save_zip_path}")
+                                    except Exception as e:
+                                        print(f"Failed to delete zip file {save_zip_path}: {e}")
 
-                                try:
-                                    os.remove(save_checksum_path)
-                                    print(f"Deleted checksum file: {save_checksum_path}")
-                                except Exception as e:
-                                    print(f"Failed to delete checksum file {save_checksum_path}: {e}")
-
+                                    try:
+                                        os.remove(save_checksum_path)
+                                        print(f"Deleted checksum file: {save_checksum_path}")
+                                    except Exception as e:
+                                        print(f"Failed to delete checksum file {save_checksum_path}: {e}")
         current += 1
 
 

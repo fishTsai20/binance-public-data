@@ -70,7 +70,9 @@ def download_file(base_path, file_name, date_range=None, folder=None):
 
     except urllib.error.HTTPError:
         print("\nFile not found: {}".format(download_url))
-        pass
+        return False
+
+    return True
 
 
 def convert_to_date_object(d):
