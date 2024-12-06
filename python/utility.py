@@ -41,7 +41,7 @@ def download_file(base_path, file_name, date_range=None, folder=None):
 
     if os.path.exists(save_path):
         print("\nfile already exists! {}".format(save_path))
-        return
+        return True
 
     # make the directory
     if not os.path.exists(base_path):
@@ -173,5 +173,8 @@ def get_parser(parser_type):
         parser.add_argument(
             '-kafka-servers', dest='kafkaServers', default='localhost:9092', nargs='+',
             help='Kafka server(s) to connect to, e.g., localhost:9092')
+        parser.add_argument(
+            '-csv', dest='csvPath',
+            help='token address map to token symbol, name csv file path')
 
     return parser

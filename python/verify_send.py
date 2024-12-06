@@ -4,8 +4,10 @@ import json
 from confluent_kafka import Producer
 from datetime import datetime
 import logging
+import csv
 
 logger = logging.getLogger(__name__)
+
 
 def calculate_checksum(file_path, hash_algorithm="sha256"):
     """计算文件的校验值。"""
@@ -25,7 +27,7 @@ def verify_checksum(zip_path, checksum_path):
     return actual_checksum == expected_checksum, expected_checksum, actual_checksum
 
 
-def parse_line_to_json(line):
+def parse_line_to_json(symbol, line, csv_path):
     """
     将一行数据解析为 JSON 对象，带字段类型转换。
     :param line: 单行数据字符串
@@ -50,7 +52,28 @@ def parse_line_to_json(line):
 
     # 类型转换并生成 JSON
     json_data = {name: field_type(value) for name, field_type, value in zip(field_names, field_types, values)}
-    return json_data
+
+    try:
+        with open(csv_path, mode='r', encoding='utf-8') as file:
+            csv_data = list(csv.DictReader(file))
+    except Exception as e:
+        print(f"Error: An unexpected error occurred while reading the file: {e}")
+    # 筛选匹配的记录
+    matched_records = [row for row in csv_data if row["binance_pair"] == symbol]
+
+    # 生成多条 JSON
+    json_list = []
+    for record in matched_records:
+        enriched_json = json_data.copy()
+        enriched_json.update({
+            "symbol": record["symbol"],
+            "name": record["name"],
+            "chain": record["chain"],
+            "contract_address": record["contract_address"]
+        })
+        json_list.append(enriched_json)
+
+    return json_list
 
 
 def delivery_report(err, msg):
@@ -63,7 +86,7 @@ def delivery_report(err, msg):
         print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 
 
-def parse_zip_and_send_to_kafka(zip_path, kafka_topic, kafka_servers):
+def parse_zip_and_send_to_kafka(symbol, csv_path, zip_path, kafka_topic, kafka_servers):
     """
     解析 ZIP 文件内容，将其转换为 JSON 格式并批量发送到 Kafka。
     :param zip_path: ZIP 文件路径
@@ -94,7 +117,7 @@ def parse_zip_and_send_to_kafka(zip_path, kafka_topic, kafka_servers):
                     lines = file.read().decode('utf-8').strip().split('\n')
                     for line in lines:
                         try:
-                            json_data = parse_line_to_json(line)
+                            json_data = parse_line_to_json(symbol, line, csv_path)
                             message_byte = json.dumps(json_data)
                             send_bytes_count += len(message_byte)
                             producer.produce(

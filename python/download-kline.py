@@ -70,7 +70,7 @@ def download_monthly_klines(trading_type, symbols, num_symbols, intervals, years
 
 
 def download_daily_klines(trading_type, symbols, num_symbols, intervals, dates, start_date, end_date, folder, checksum,
-                          kafka_topic, kafka_servers):
+                          kafka_topic, kafka_servers, csv_path):
     current = 0
     date_range = None
 
@@ -116,7 +116,8 @@ def download_daily_klines(trading_type, symbols, num_symbols, intervals, dates, 
                             else:
                                 print("Checksum is valid. Proceeding with file parsing...")
                                 # 调用函数解析 ZIP 并发送到 Kafka
-                                send_success = parse_zip_and_send_to_kafka(save_zip_path, kafka_topic, kafka_servers)
+                                send_success = parse_zip_and_send_to_kafka(symbol,csv_path, save_zip_path, kafka_topic,
+                                                                           kafka_servers)
                                 if send_success:
                                     """
                                         删除文件
@@ -161,4 +162,4 @@ if __name__ == "__main__":
                                     args.kafkaServers)
     if args.skip_daily == 0:
         download_daily_klines(args.type, symbols, num_symbols, args.intervals, dates, args.startDate, args.endDate,
-                              args.folder, args.checksum, args.kafkaTopic, args.kafkaServers)
+                              args.folder, args.checksum, args.kafkaTopic, args.kafkaServers,args.csvPath)
