@@ -117,14 +117,16 @@ def parse_zip_and_send_to_kafka(symbol, csv_path, zip_path, kafka_topic, kafka_s
                     lines = file.read().decode('utf-8').strip().split('\n')
                     for line in lines:
                         try:
-                            json_data = parse_line_to_json(symbol, line, csv_path)
-                            message_byte = json.dumps(json_data)
-                            send_bytes_count += len(message_byte)
-                            producer.produce(
-                                topic=kafka_topic,
-                                value=message_byte,
-                                callback=delivery_report
-                            )
+                            json_list = parse_line_to_json(symbol, line, csv_path)
+                            for json_data in json_list:
+                                message_byte = json.dumps(json_data)
+                                send_bytes_count += len(message_byte)
+                                producer.produce(
+                                    topic=kafka_topic,
+                                    value=message_byte,
+                                    callback=delivery_report
+                                )
+
                         except ValueError as e:
                             print(f"Skipping line due to error: {e}")
     except Exception as e:
