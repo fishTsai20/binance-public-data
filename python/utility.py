@@ -30,6 +30,13 @@ def get_all_symbols(type):
     return list(map(lambda symbol: symbol['symbol'], json.loads(response)['symbols']))
 
 
+def download_file_with_retry(max_retries, base_path, file_name, date_range=None, folder=None):
+    for attempt in range(1, max_retries + 1):
+        if download_file(base_path, file_name, date_range, folder):
+            return True
+    return False
+
+
 def download_file(base_path, file_name, date_range=None, folder=None):
     download_path = "{}{}".format(base_path, file_name)
     if folder:

@@ -1,4 +1,5 @@
 import hashlib
+import os
 import zipfile
 import json
 from confluent_kafka import Producer
@@ -85,6 +86,26 @@ def delivery_report(err, msg):
     else:
         print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 
+def sink_to_kafka_and_delete(symbol, csv_path, zip_path, kafka_topic, kafka_servers):
+    send_success = parse_zip_and_send_to_kafka(symbol, csv_path, zip_path,
+                                               kafka_topic,
+                                               kafka_servers)
+    if send_success:
+        """
+            删除文件
+            :param zip_path: ZIP 文件路径
+            """
+        try:
+            os.remove(zip_path)
+            print(f"Deleted zip file: {zip_path}")
+        except Exception as e:
+            print(f"Failed to delete zip file {zip_path}: {e}")
+
+        try:
+            os.remove(zip_path+".CHECKSUM")
+            print(f"Deleted checksum file: {zip_path}.CHECKSUM")
+        except Exception as e:
+            print(f"Failed to delete checksum file {zip_path}.CHECKSUM: {e}")
 
 def parse_zip_and_send_to_kafka(symbol, csv_path, zip_path, kafka_topic, kafka_servers):
     """

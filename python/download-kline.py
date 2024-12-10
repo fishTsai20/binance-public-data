@@ -13,8 +13,8 @@ from datetime import *
 import pandas as pd
 from enums import *
 from utility import download_file, get_all_symbols, get_parser, get_start_end_date_objects, convert_to_date_object, \
-    get_path, get_destination_dir
-from verify_send import verify_checksum, parse_zip_and_send_to_kafka
+    get_path, get_destination_dir, download_file_with_retry
+from verify_send import verify_checksum, parse_zip_and_send_to_kafka, sink_to_kafka_and_delete
 
 
 def download_monthly_klines(trading_type, symbols, num_symbols, intervals, years, months, start_date, end_date, folder,
@@ -73,6 +73,7 @@ def download_daily_klines(trading_type, symbols, num_symbols, intervals, dates, 
                           kafka_topic, kafka_servers, csv_path):
     current = 0
     date_range = None
+    max_retries = 3
 
     if start_date and end_date:
         date_range = start_date + " " + end_date
@@ -94,46 +95,43 @@ def download_daily_klines(trading_type, symbols, num_symbols, intervals, dates, 
     for symbol in symbols:
         print("[{}/{}] - start download daily {} klines ".format(current + 1, num_symbols, symbol))
         for interval in intervals:
+
             for date in dates:
                 current_date = convert_to_date_object(date)
                 if current_date >= start_date and current_date <= end_date:
                     path = get_path(trading_type, "klines", "daily", symbol, interval)
                     file_name = "{}-{}-{}.zip".format(symbol.upper(), interval, date)
-                    download_success = download_file(path, file_name, date_range, folder)
+                    download_success = download_file_with_retry(max_retries, path, file_name, date_range, folder)
                     if download_success:
                         if checksum == 1:
                             checksum_path = get_path(trading_type, "klines", "daily", symbol, interval)
                             checksum_file_name = "{}-{}-{}.zip.CHECKSUM".format(symbol.upper(), interval, date)
-                            download_file(checksum_path, checksum_file_name, date_range, folder)
-
-                            save_checksum_path = get_destination_dir(os.path.join(checksum_path, checksum_file_name),
-                                                                     folder)
                             save_zip_path = get_destination_dir(os.path.join(path, file_name), folder)
-                            is_valid, expected_checksum, actual_checksum = verify_checksum(save_zip_path,
-                                                                                           save_checksum_path)
-                            if not is_valid:
-                                print(f"Checksum mismatch! Expected: {expected_checksum}, Actual: {actual_checksum}")
-                            else:
-                                print("Checksum is valid. Proceeding with file parsing...")
-                                # 调用函数解析 ZIP 并发送到 Kafka
-                                send_success = parse_zip_and_send_to_kafka(symbol,csv_path, save_zip_path, kafka_topic,
-                                                                           kafka_servers)
-                                if send_success:
-                                    """
-                                        删除文件
-                                        :param zip_path: ZIP 文件路径
-                                        """
-                                    try:
-                                        os.remove(save_zip_path)
-                                        print(f"Deleted zip file: {save_zip_path}")
-                                    except Exception as e:
-                                        print(f"Failed to delete zip file {save_zip_path}: {e}")
 
-                                    try:
-                                        os.remove(save_checksum_path)
-                                        print(f"Deleted checksum file: {save_checksum_path}")
-                                    except Exception as e:
-                                        print(f"Failed to delete checksum file {save_checksum_path}: {e}")
+                            download_checksum = download_file_with_retry(max_retries, checksum_path, checksum_file_name,
+                                                                         date_range, folder)
+                            if download_checksum:
+                                save_checksum_path = get_destination_dir(
+                                    os.path.join(checksum_path, checksum_file_name),
+                                    folder)
+                                is_valid, expected_checksum, actual_checksum = verify_checksum(save_zip_path,
+                                                                                               save_checksum_path)
+                                if not is_valid:
+                                    print(
+                                        f"Checksum mismatch! Expected: {expected_checksum}, Actual: {actual_checksum}")
+                                else:
+                                    print("Checksum is valid. Proceeding with file parsing...")
+                                    # 调用函数解析 ZIP 并发送到 Kafka
+                                    sink_to_kafka_and_delete(symbol, csv_path, save_zip_path, kafka_topic,
+                                                             kafka_servers)
+
+                            else:
+                                sink_to_kafka_and_delete(symbol, csv_path, save_zip_path, kafka_topic,
+                                                         kafka_servers)
+
+
+                    else:
+                        print("download {}/{} failed, skip".format(path, file_name))
         current += 1
 
 
@@ -161,5 +159,6 @@ if __name__ == "__main__":
                                     args.startDate, args.endDate, args.folder, args.checksum, args.kafkaTopic,
                                     args.kafkaServers)
     if args.skip_daily == 0:
+
         download_daily_klines(args.type, symbols, num_symbols, args.intervals, dates, args.startDate, args.endDate,
-                              args.folder, args.checksum, args.kafkaTopic, args.kafkaServers,args.csvPath)
+                              args.folder, args.checksum, args.kafkaTopic, args.kafkaServers, args.csvPath)
