@@ -128,10 +128,9 @@ def download_daily_klines(trading_type, symbols, num_symbols, intervals, dates, 
                             else:
                                 sink_to_kafka_and_delete(symbol, csv_path, save_zip_path, kafka_topic,
                                                          kafka_servers)
-
-
                     else:
                         print("download {}/{} failed, skip".format(path, file_name))
+        print("========download daily {} klines finished!!!".format(symbol))
         current += 1
 
 
@@ -162,3 +161,4 @@ if __name__ == "__main__":
 
         download_daily_klines(args.type, symbols, num_symbols, args.intervals, dates, args.startDate, args.endDate,
                               args.folder, args.checksum, args.kafkaTopic, args.kafkaServers, args.csvPath)
+        print("download kline daily finished.......")
