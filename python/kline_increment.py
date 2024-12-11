@@ -4,12 +4,11 @@ import sys
 
 import aiohttp
 from confluent_kafka import Producer
-from kafka import KafkaProducer
 import json
 from datetime import datetime, timedelta
 
-from python.utility import get_parser, get_kline_increment_parser
-from python.verify_send import parse_line_to_json, delivery_report
+from utility import get_kline_increment_parser
+from verify_send import parse_line_to_json, delivery_report
 
 logger = logging.getLogger(__name__)
 
