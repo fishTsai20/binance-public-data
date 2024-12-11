@@ -171,6 +171,29 @@ def get_path(trading_type, market_data_type, time_period, symbol, interval=None)
         path = f'{trading_type_path}/{time_period}/{market_data_type}/{symbol.upper()}/'
     return path
 
+def get_kline_increment_parser():
+    parser = ArgumentParser(description=("This is a script to get kline increment data"),
+                            formatter_class=RawTextHelpFormatter)
+    parser.add_argument(
+        '-s', dest='symbols', nargs='+',
+        help='Single symbol or multiple symbols separated by space')
+
+    parser.add_argument(
+        '-csv', dest='csvPath',
+        help='token address map to token symbol, name csv file path')
+    parser.add_argument(
+        '-interval', dest='interval', type=int, default=300,
+        help='get data every interval seconds')
+    parser.add_argument(
+        '-range', dest='range', type=int, default=600,
+        help='get kline\'s data before range seconds ago')
+    parser.add_argument(
+        '-kafka-topic', dest='kafkaTopic',
+        help='Kafka topic to receive data')
+    parser.add_argument(
+        '-kafka-servers', dest='kafkaServers', default='localhost:9092', nargs='+',
+        help='Kafka server(s) to connect to, e.g., localhost:9092')
+    return parser
 
 def get_parser(parser_type):
     parser = ArgumentParser(description=("This is a script to download historical {} data").format(parser_type),
